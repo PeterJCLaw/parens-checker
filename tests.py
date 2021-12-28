@@ -113,6 +113,24 @@ class TestAST(unittest.TestCase):
             ''',
         )
 
+    def test_call_with_args(self) -> None:
+        self.assertAst(
+            'foo("abc", bar, 123)',
+            r'''
+            Node:
+            - <MultiTokenNode 'foo'>
+            - <SingleTokenNode '('>
+            - Node:
+              - <MultiTokenNode '"abc"'>
+              - <SingleTokenNode ','>
+              - <MultiTokenNode 'bar'>
+              - <SingleTokenNode ','>
+              - <MultiTokenNode '123'>
+            - <SingleTokenNode ')'>
+            - <MultiTokenNode ' '>
+            ''',
+        )
+
     def test_nested_call(self) -> None:
         self.assertAst(
             'foo(bar())',

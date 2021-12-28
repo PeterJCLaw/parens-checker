@@ -41,18 +41,14 @@ class StringifyVisitor:
             child.visit(self)
 
     def appendPart(self, string: str) -> None:
-        if self._prefix:
-            self.parts.append(self._prefix)
-
+        self.parts.append(self._prefix)
         self.parts.append(string)
-
-        if self._suffix:
-            self.parts.append(self._suffix)
+        self.parts.append(self._suffix)
 
     def visitNode(self, node: Node) -> None:
         with self.suffix("\n"):
             self.appendPart(f'{type(node).__name__}:')
-            with self.prefix(" - "):
+            with self.prefix("- "):
                 self.visitChildren(node)
 
     def visitSingleTokenNode(self, node: SingleTokenNode) -> None:
@@ -84,7 +80,7 @@ class TestAST(unittest.TestCase):
             'foo',
             '''
             Node:
-             - <MultiTokenNode 'foo  '>
+            - <MultiTokenNode 'foo  '>
             ''',
         )
 
@@ -93,10 +89,10 @@ class TestAST(unittest.TestCase):
             'foo()',
             r'''
             Node:
-             - <MultiTokenNode 'foo'>
-             - <SingleTokenNode '('>
-             - <SingleTokenNode ')'>
-             - <MultiTokenNode ' '>
+            - <MultiTokenNode 'foo'>
+            - <SingleTokenNode '('>
+            - <SingleTokenNode ')'>
+            - <MultiTokenNode ' '>
             ''',
         )
 
@@ -108,10 +104,10 @@ class TestAST(unittest.TestCase):
             ''',
             r'''
             Node:
-             - <MultiTokenNode 'def foo'>
-             - <SingleTokenNode '('>
-             - <SingleTokenNode ')'>
-             - <MultiTokenNode ': \n      ... \n  '>
+            - <MultiTokenNode 'def foo'>
+            - <SingleTokenNode '('>
+            - <SingleTokenNode ')'>
+            - <MultiTokenNode ': \n      ... \n  '>
             ''',
         )
 

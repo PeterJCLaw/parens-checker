@@ -33,14 +33,6 @@ class NodeKind (enum.Enum):
     OTHER = 'other'
 
     @classmethod
-    def is_special(cls, tok: TokenInfo) -> bool:
-        try:
-            cls.from_token(tok)
-            return True
-        except ValueError:
-            return False
-
-    @classmethod
     def from_token(cls, tok: TokenInfo) -> NodeKind:
         if tok.type == token.OP:
             if tok.string == ',':
@@ -52,8 +44,7 @@ class NodeKind (enum.Enum):
             if tok.string in ')]}':
                 return cls.CLOSE_PAREN
 
-        # OTHER should never be applied to a single token
-        raise ValueError(f"Unknonw token kind {tok!r}")
+        return cls.OTHER
 
 
 class Node:
@@ -72,6 +63,8 @@ class SingleTokenNode(Node):
         super().__init__([])
         self.token = tok
         self.kind = NodeKind.from_token(tok)
+        if self.kind is NodeKind.OTHER:
+            raise ValueError(f"Unexpected token kind {tok!r} for single token node")
 
     def visit(self, visitor: Visitor) -> None:
         return visitor.visitSingleTokenNode(self)
@@ -100,18 +93,32 @@ class MultiTokenNode(Node):
 
 def parse_ast(tokens: Iterable[TokenInfo]) -> Node:
     parent = Node([])
+    stack: List[Node] = []
     spare_tokens: List[TokenInfo] = []
 
     for tok in tokens:
-        if NodeKind.is_special(tok):
-            if spare_tokens:
-                parent.children.append(MultiTokenNode(spare_tokens))
-                spare_tokens = []
+        kind = NodeKind.from_token(tok)
 
-            node = SingleTokenNode(tok)
-            parent.children.append(node)
-        else:
+        if kind == NodeKind.OTHER:
             spare_tokens.append(tok)
+            continue
+
+        if spare_tokens:
+            parent.children.append(MultiTokenNode(spare_tokens))
+            spare_tokens = []
+
+        if kind == NodeKind.CLOSE_PAREN:
+            parent = stack.pop()
+
+        node = SingleTokenNode(tok)
+        parent.children.append(node)
+
+        if kind == NodeKind.OPEN_PAREN:
+            new_parent = Node([])
+            parent.children.append(new_parent)
+            stack.append(parent)
+            parent = new_parent
+            del new_parent
 
     if spare_tokens:
         parent.children.append(MultiTokenNode(spare_tokens))

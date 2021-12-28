@@ -15,6 +15,7 @@ class StringifyVisitor:
     def __init__(self) -> None:
         self.parts: List[str] = []
         self._prefix = ""
+        self._indent = ""
         self._suffix = ""
 
     def to_string(self) -> str:
@@ -29,6 +30,14 @@ class StringifyVisitor:
             self._prefix = original
 
     @contextlib.contextmanager
+    def indent(self) -> Iterator[None]:
+        self._indent += "  "
+        try:
+            yield
+        finally:
+            self._indent = self._indent[:-2]
+
+    @contextlib.contextmanager
     def suffix(self, suffix: str) -> Iterator[None]:
         original, self._suffix = self._suffix, suffix
         try:
@@ -41,15 +50,22 @@ class StringifyVisitor:
             child.visit(self)
 
     def appendPart(self, string: str) -> None:
+        self.parts.append(self._indent)
         self.parts.append(self._prefix)
         self.parts.append(string)
         self.parts.append(self._suffix)
 
     def visitNode(self, node: Node) -> None:
         with self.suffix("\n"):
-            self.appendPart(f'{type(node).__name__}:')
-            with self.prefix("- "):
-                self.visitChildren(node)
+            name = type(node).__name__
+            if node.children:
+                self.appendPart(f'{name}:')
+
+                indent = self.indent() if self._prefix else contextlib.nullcontext()
+                with indent, self.prefix("- "):
+                    self.visitChildren(node)
+            else:
+                self.appendPart(f'{name}: []')
 
     def visitSingleTokenNode(self, node: SingleTokenNode) -> None:
         self.appendPart(str(node))
@@ -91,6 +107,24 @@ class TestAST(unittest.TestCase):
             Node:
             - <MultiTokenNode 'foo'>
             - <SingleTokenNode '('>
+            - Node: []
+            - <SingleTokenNode ')'>
+            - <MultiTokenNode ' '>
+            ''',
+        )
+
+    def test_nested_call(self) -> None:
+        self.assertAst(
+            'foo(bar())',
+            r'''
+            Node:
+            - <MultiTokenNode 'foo'>
+            - <SingleTokenNode '('>
+            - Node:
+              - <MultiTokenNode 'bar'>
+              - <SingleTokenNode '('>
+              - Node: []
+              - <SingleTokenNode ')'>
             - <SingleTokenNode ')'>
             - <MultiTokenNode ' '>
             ''',
@@ -106,6 +140,7 @@ class TestAST(unittest.TestCase):
             Node:
             - <MultiTokenNode 'def foo'>
             - <SingleTokenNode '('>
+            - Node: []
             - <SingleTokenNode ')'>
             - <MultiTokenNode ': \n      ... \n  '>
             ''',

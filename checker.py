@@ -26,7 +26,7 @@ class Error:
     ...
 
 
-class NodeKind (enum.Enum):
+class NodeKind(enum.Enum):
     COMMA = 'comma'
     OPEN_PAREN = 'open_paren'
     CLOSE_PAREN = 'close_paren'

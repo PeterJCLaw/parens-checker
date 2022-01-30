@@ -8,7 +8,13 @@ import contextlib
 from typing import List, Iterator
 
 import checker
-from checker import Node, MultiTokenNode, ParensGroupNode, SingleTokenNode
+from checker import (
+    Node,
+    Error,
+    MultiTokenNode,
+    ParensGroupNode,
+    SingleTokenNode,
+)
 
 
 class StringifyVisitor:
@@ -214,6 +220,192 @@ class TestAST(unittest.TestCase):
                 - <SingleTokenNode ','>
               - <SingleTokenNode ','>
             ''',
+        )
+
+
+class TestErrors(unittest.TestCase):
+    def assertErrors(self, text: str, expected: List[Error]) -> None:
+        text = textwrap.dedent(text.lstrip('\n'))
+
+        ast = checker.parse_ast(
+            tokenize.generate_tokens(
+                io.StringIO(text).readline,
+            ),
+        )
+        errors = checker.validate(ast)
+
+        stringified = StringifyVisitor.stringify(ast)
+        self.assertEqual(expected, errors, f"Wrong errors.\nAST:\n{stringified}")
+
+    def assertNoErrors(self, text: str) -> None:
+        self.assertErrors(text, [])
+
+    def test_no_call(self) -> None:
+        self.assertNoErrors('foo')
+
+    def test_call(self) -> None:
+        self.assertNoErrors('foo()')
+
+    def test_call_with_args(self) -> None:
+        self.assertNoErrors('foo("abc", bar, 123)')
+
+    def test_wrapped_call_with_wrapped_args(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo(
+                "abc",
+                bar,
+                123,
+            )
+            ''',
+        )
+
+    def test_wrapped_call_with_single_line_args(self) -> None:
+        self.assertErrors(
+            '''
+            foo(
+                "abc", bar, 123,
+            )
+            ''',
+            [
+                Error(2, 11, "Argument should be wrapped when containing parens are wrapped"),
+                Error(2, 16, "Argument should be wrapped when containing parens are wrapped"),
+            ],
+        )
+
+    def test_nested_call(self) -> None:
+        self.assertNoErrors('foo(bar())')
+
+    def test_wrapped_nested_call(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo(
+                bar(),
+            )
+            ''',
+        )
+
+    def test_wrapped_nested_call_hugging(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo(bar(
+                "abc",
+            ))
+            ''',
+        )
+
+    def test_call_single_argument_collection(self) -> None:
+        self.assertNoErrors('foo([])')
+
+    def test_wrapped_call_single_argument_collection(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo(
+                ["abc"],
+            )
+            ''',
+        )
+
+    def test_wrapped_call_single_argument_wrapped_collection(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo(
+                [
+                    "abc",
+                ],
+            )
+            ''',
+        )
+
+    def test_wrapped_call_single_argument_collection_hugging(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo([
+                "abc",
+            ])
+            ''',
+        )
+
+    def test_wrapped_call_two_collections_hugging(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo([
+                "abc",
+            ], [
+                123,
+            ])
+            ''',
+        )
+
+    def test_wrapped_call_fully_wrapped_mixed(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo(
+                123,
+                ["abc"],
+                123,
+                [
+                    123,
+                ],
+            )
+            ''',
+        )
+
+    def test_wrapped_call_arguments_before_wrapped_collection(self) -> None:
+        self.assertNoErrors(
+            '''
+            foo(123, [
+                "abc",
+            ])
+            ''',
+        )
+
+    def test_wrapped_call_argument_not_wrapped(self) -> None:
+        self.assertErrors(
+            '''
+            foo("abc",
+            )
+            ''',
+            [Error(1, 4, "Argument should be wrapped when containing parens are wrapped")],
+        )
+
+    def test_wrapped_call_paren_insufficiently_wrapped(self) -> None:
+        self.assertErrors(
+            '''
+            foo(
+                "abc")
+            ''',
+            [Error(2, 9, "Closing ')' not wrapped")],
+        )
+
+    def test_wrapped_dict_literal(self) -> None:
+        self.assertNoErrors(
+            '''
+            {
+                "longish key":
+                    "very long value",
+            }
+            ''',
+        )
+
+    def test_wrapped_dict_literal_unwraped_closing_brace(self) -> None:
+        self.assertErrors(
+            '''
+            {
+                "longish key":
+                    "very long value"}
+            ''',
+            [Error(3, 25, "Closing '}' not wrapped")],
+        )
+
+    def test_wrapped_dict_literal_unwraped_initial_key(self) -> None:
+        self.assertErrors(
+            '''
+            {"longish key":
+                "very long value",
+            }
+            ''',
+            [Error(1, 1, "Argument should be wrapped when containing parens are wrapped")],
         )
 
 

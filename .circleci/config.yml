@@ -53,11 +53,11 @@ references:
   python-full-version-matrix: &python-full-version-matrix
     matrix:
       parameters:
-        version: ["3.7", "3.8", "3.9", "3.10"]
+        version: ["3.8", "3.9", "3.10"]
   python-top-and-bottom-version-matrix: &python-top-and-bottom-version-matrix
     matrix:
       parameters:
-        version: ["3.7", "3.10"]
+        version: ["3.8", "3.10"]
   filter-tags: &filter-tags
     filters:
       branches:
@@ -128,7 +128,7 @@ jobs:
 
   release:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.9
     steps:
       - checkout
 

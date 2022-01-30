@@ -21,6 +21,9 @@ class Visitor(Protocol):
     def visitMultiTokenNode(self, node: MultiTokenNode) -> None:
         ...
 
+    def visitParensGroupNode(self, node: ParensGroupNode) -> None:
+        ...
+
 
 class Error:
     ...
@@ -91,10 +94,57 @@ class MultiTokenNode(Node):
         return f"<MultiTokenNode {' '.join(x.string for x in self.tokens)!r}>"
 
 
+class ParensGroupNode(Node):
+    @staticmethod
+    def validate_start_end(start: TokenInfo, end: TokenInfo) -> None:
+        expected_end = {
+            '(': ')',
+            '{': '}',
+            '[': ']',
+        }[start.string]
+        if end.string != expected_end:
+            raise ValueError(
+                "Start and end must be the same kind of bracket "
+                f"(got {start.string!r} and {end.string!r}",
+            )
+
+    def __init__(
+        self,
+        start: SingleTokenNode,
+        children: List[Node],
+        end: SingleTokenNode,
+    ) -> None:
+        self.start = start
+        self.children = children
+        self.end = end
+
+        self.validate_start_end(start.token, end.token)
+
+    def visit(self, visitor: Visitor) -> None:
+        return visitor.visitParensGroupNode(self)
+
+    def __repr__(self) -> str:
+        return f"ParensGroupNode({self.start!r}, {self.children!r}, {self.end!r})"
+
+    def __str__(self) -> str:
+        children = " ... " if self.children else ""
+        return f"<ParensGroupNode {self.start.token.string}{children}{self.end.token.string}>"
+
+
+class OpenParensGroup:
+    def __init__(self, start: SingleTokenNode) -> None:
+        self.start = start
+        self.children: List[Node] = []
+
+    def complete(self, end: SingleTokenNode) -> ParensGroupNode:
+        return ParensGroupNode(self.start, self.children, end)
+
+
 def parse_ast(tokens: Iterable[TokenInfo]) -> Node:
-    parent = Node([])
-    stack: List[Node] = []
+    stack: List[OpenParensGroup] = []
     spare_tokens: List[TokenInfo] = []
+    spare_nodes: List[Node] = []
+    root = Node(spare_nodes)
 
     for tok in tokens:
         kind = NodeKind.from_token(tok)
@@ -104,26 +154,30 @@ def parse_ast(tokens: Iterable[TokenInfo]) -> Node:
             continue
 
         if spare_tokens:
-            parent.children.append(MultiTokenNode(spare_tokens))
+            spare_nodes.append(MultiTokenNode(spare_tokens))
             spare_tokens = []
 
         if kind == NodeKind.CLOSE_PAREN:
-            parent = stack.pop()
+            open_group = stack.pop()
+            spare_nodes = stack[-1].children if stack else root.children
+            node = open_group.complete(SingleTokenNode(tok))
+            spare_nodes.append(node)
 
-        node = SingleTokenNode(tok)
-        parent.children.append(node)
+        elif kind == NodeKind.OPEN_PAREN:
+            open_group = OpenParensGroup(SingleTokenNode(tok))
+            stack.append(open_group)
+            spare_nodes = open_group.children
 
-        if kind == NodeKind.OPEN_PAREN:
-            new_parent = Node([])
-            parent.children.append(new_parent)
-            stack.append(parent)
-            parent = new_parent
-            del new_parent
+        elif kind == NodeKind.COMMA:
+            spare_nodes.append(SingleTokenNode(tok))
+
+        else:
+            raise AssertionError(f"Unexpected NodeKind {kind!r}")
 
     if spare_tokens:
-        parent.children.append(MultiTokenNode(spare_tokens))
+        root.children.append(MultiTokenNode(spare_tokens))
 
-    return parent
+    return root
 
 
 def process(tokens: Iterable[TokenInfo]) -> List[Error]:

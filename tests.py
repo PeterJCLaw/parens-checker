@@ -8,7 +8,7 @@ import contextlib
 from typing import List, Iterator
 
 import checker
-from checker import Node, MultiTokenNode, SingleTokenNode
+from checker import Node, MultiTokenNode, ParensGroupNode, SingleTokenNode
 
 
 class StringifyVisitor:
@@ -38,6 +38,12 @@ class StringifyVisitor:
             self._indent = self._indent[:-2]
 
     @contextlib.contextmanager
+    def indent_and_prefix(self, prefix: str) -> Iterator[None]:
+        indent = self.indent() if self._prefix else contextlib.nullcontext()
+        with indent, self.prefix(prefix):
+            yield
+
+    @contextlib.contextmanager
     def suffix(self, suffix: str) -> Iterator[None]:
         original, self._suffix = self._suffix, suffix
         try:
@@ -61,8 +67,7 @@ class StringifyVisitor:
             if node.children:
                 self.appendPart(f'{name}:')
 
-                indent = self.indent() if self._prefix else contextlib.nullcontext()
-                with indent, self.prefix("- "):
+                with self.indent_and_prefix("- "):
                     self.visitChildren(node)
             else:
                 self.appendPart(f'{name}: []')
@@ -72,6 +77,12 @@ class StringifyVisitor:
 
     def visitMultiTokenNode(self, node: MultiTokenNode) -> None:
         self.appendPart(str(node))
+
+    def visitParensGroupNode(self, node: ParensGroupNode) -> None:
+        with self.suffix("\n"):
+            self.appendPart(str(node))
+            with self.indent_and_prefix("- "):
+                self.visitChildren(node)
 
 
 class TestAST(unittest.TestCase):
@@ -106,9 +117,7 @@ class TestAST(unittest.TestCase):
             r'''
             Node:
             - <MultiTokenNode 'foo'>
-            - <SingleTokenNode '('>
-            - Node: []
-            - <SingleTokenNode ')'>
+            - <ParensGroupNode ()>
             - <MultiTokenNode ' '>
             ''',
         )
@@ -119,14 +128,12 @@ class TestAST(unittest.TestCase):
             r'''
             Node:
             - <MultiTokenNode 'foo'>
-            - <SingleTokenNode '('>
-            - Node:
+            - <ParensGroupNode ( ... )>
               - <MultiTokenNode '"abc"'>
               - <SingleTokenNode ','>
               - <MultiTokenNode 'bar'>
               - <SingleTokenNode ','>
               - <MultiTokenNode '123'>
-            - <SingleTokenNode ')'>
             - <MultiTokenNode ' '>
             ''',
         )
@@ -137,13 +144,9 @@ class TestAST(unittest.TestCase):
             r'''
             Node:
             - <MultiTokenNode 'foo'>
-            - <SingleTokenNode '('>
-            - Node:
+            - <ParensGroupNode ( ... )>
               - <MultiTokenNode 'bar'>
-              - <SingleTokenNode '('>
-              - Node: []
-              - <SingleTokenNode ')'>
-            - <SingleTokenNode ')'>
+              - <ParensGroupNode ()>
             - <MultiTokenNode ' '>
             ''',
         )
@@ -157,9 +160,7 @@ class TestAST(unittest.TestCase):
             r'''
             Node:
             - <MultiTokenNode 'def foo'>
-            - <SingleTokenNode '('>
-            - Node: []
-            - <SingleTokenNode ')'>
+            - <ParensGroupNode ()>
             - <MultiTokenNode ': \n      ... \n  '>
             ''',
         )

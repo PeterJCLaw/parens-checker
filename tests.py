@@ -76,8 +76,7 @@ class StringifyVisitor:
         self.appendPart(str(node))
 
     def visitMultiTokenNode(self, node: MultiTokenNode) -> None:
-        if node.visible_tokens:
-            self.appendPart(str(node))
+        self.appendPart(str(node))
 
     def visitParensGroupNode(self, node: ParensGroupNode) -> None:
         with self.suffix("\n"):
@@ -108,7 +107,7 @@ class TestAST(unittest.TestCase):
             'foo',
             '''
             Node:
-            - <MultiTokenNode 'foo '>
+            - <MultiTokenNode 'foo'>
             ''',
         )
 
@@ -159,7 +158,7 @@ class TestAST(unittest.TestCase):
             Node:
             - <MultiTokenNode 'def foo'>
             - <ParensGroupNode ()>
-            - <MultiTokenNode ': \n      ... \n '>
+            - <MultiTokenNode ': ...'>
             ''',
         )
 
@@ -176,13 +175,40 @@ class TestAST(unittest.TestCase):
             - <MultiTokenNode 'print'>
             - <ParensGroupNode ( ... )>
               - <MultiTokenNode '"top"'>
-            - <MultiTokenNode '\n def foo'>
+            - <MultiTokenNode 'def foo'>
             - <ParensGroupNode ()>
-            - <MultiTokenNode ': \n      print'>
+            - <MultiTokenNode ': print'>
             - <ParensGroupNode ( ... )>
               - <MultiTokenNode '"foo"'>
-            - <MultiTokenNode '\n  foo'>
+            - <MultiTokenNode 'foo'>
             - <ParensGroupNode ()>
+            ''',
+        )
+
+    def test_fully_wrapped_call(self) -> None:
+        self.assertAst(
+            '''
+            foo(
+                123,
+                [123],
+                [
+                    123,
+                ],
+            )
+            ''',
+            r'''
+            Node:
+            - <MultiTokenNode 'foo'>
+            - <ParensGroupNode ( ... )>
+              - <MultiTokenNode '123'>
+              - <SingleTokenNode ','>
+              - <ParensGroupNode [ ... ]>
+                - <MultiTokenNode '123'>
+              - <SingleTokenNode ','>
+              - <ParensGroupNode [ ... ]>
+                - <MultiTokenNode '123'>
+                - <SingleTokenNode ','>
+              - <SingleTokenNode ','>
             ''',
         )
 

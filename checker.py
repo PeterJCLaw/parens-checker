@@ -158,7 +158,7 @@ def parse_ast(tokens: Iterable[TokenInfo]) -> Node:
     root = Node(spare_nodes)
 
     for tok in tokens:
-        if tok.type == token.ENDMARKER:
+        if tok.type == token.ENDMARKER or tok.type in WHITESPACE_TOKENS:
             continue
 
         kind = NodeKind.from_token(tok)

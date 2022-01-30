@@ -76,7 +76,8 @@ class StringifyVisitor:
         self.appendPart(str(node))
 
     def visitMultiTokenNode(self, node: MultiTokenNode) -> None:
-        self.appendPart(str(node))
+        if node.visible_tokens:
+            self.appendPart(str(node))
 
     def visitParensGroupNode(self, node: ParensGroupNode) -> None:
         with self.suffix("\n"):
@@ -107,7 +108,7 @@ class TestAST(unittest.TestCase):
             'foo',
             '''
             Node:
-            - <MultiTokenNode 'foo  '>
+            - <MultiTokenNode 'foo '>
             ''',
         )
 
@@ -118,7 +119,6 @@ class TestAST(unittest.TestCase):
             Node:
             - <MultiTokenNode 'foo'>
             - <ParensGroupNode ()>
-            - <MultiTokenNode ' '>
             ''',
         )
 
@@ -134,7 +134,6 @@ class TestAST(unittest.TestCase):
               - <MultiTokenNode 'bar'>
               - <SingleTokenNode ','>
               - <MultiTokenNode '123'>
-            - <MultiTokenNode ' '>
             ''',
         )
 
@@ -147,7 +146,6 @@ class TestAST(unittest.TestCase):
             - <ParensGroupNode ( ... )>
               - <MultiTokenNode 'bar'>
               - <ParensGroupNode ()>
-            - <MultiTokenNode ' '>
             ''',
         )
 
@@ -161,7 +159,7 @@ class TestAST(unittest.TestCase):
             Node:
             - <MultiTokenNode 'def foo'>
             - <ParensGroupNode ()>
-            - <MultiTokenNode ': \n      ... \n  '>
+            - <MultiTokenNode ': \n      ... \n '>
             ''',
         )
 
@@ -185,7 +183,6 @@ class TestAST(unittest.TestCase):
               - <MultiTokenNode '"foo"'>
             - <MultiTokenNode '\n  foo'>
             - <ParensGroupNode ()>
-            - <MultiTokenNode '\n '>
             ''',
         )
 

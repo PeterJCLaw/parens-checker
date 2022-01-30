@@ -10,6 +10,13 @@ import tokenize
 from typing import List, Iterable, Protocol
 from tokenize import TokenInfo
 
+WHITESPACE_TOKENS = (
+    token.NEWLINE,
+    token.INDENT,
+    token.DEDENT,
+    token.NL,
+)
+
 
 class Visitor(Protocol):
     def visitNode(self, node: Node) -> None:
@@ -87,6 +94,10 @@ class MultiTokenNode(Node):
     def visit(self, visitor: Visitor) -> None:
         return visitor.visitMultiTokenNode(self)
 
+    @property
+    def visible_tokens(self) -> List[TokenInfo]:
+        return [x for x in self.tokens if x.type not in WHITESPACE_TOKENS]
+
     def __repr__(self) -> str:
         return f"MultiTokenNode({self.tokens!r})"
 
@@ -147,6 +158,9 @@ def parse_ast(tokens: Iterable[TokenInfo]) -> Node:
     root = Node(spare_nodes)
 
     for tok in tokens:
+        if tok.type == token.ENDMARKER:
+            continue
+
         kind = NodeKind.from_token(tok)
 
         if kind == NodeKind.OTHER:

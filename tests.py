@@ -12,6 +12,12 @@ from checker import Node, MultiTokenNode, ParensGroupNode, SingleTokenNode
 
 
 class StringifyVisitor:
+    @classmethod
+    def stringify(cls, node: Node) -> str:
+        visitor = cls()
+        node.visit(visitor)
+        return visitor.to_string()
+
     def __init__(self) -> None:
         self.parts: List[str] = []
         self._prefix = ""
@@ -96,9 +102,7 @@ class TestAST(unittest.TestCase):
             ),
         )
 
-        visitor = StringifyVisitor()
-        ast.visit(visitor)
-        actual = visitor.to_string()
+        actual = StringifyVisitor.stringify(ast)
 
         self.assertEqual(expected, actual)
 

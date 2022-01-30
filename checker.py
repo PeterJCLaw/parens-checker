@@ -344,8 +344,8 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 def run(args: argparse.Namespace) -> None:
     with args.file:
         token_stream = tokenize.generate_tokens(args.file.readline)
+        errors = process(token_stream)
 
-    errors = process(token_stream)
     print(errors)
 
 

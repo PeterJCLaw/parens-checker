@@ -346,7 +346,8 @@ def run(args: argparse.Namespace) -> None:
         token_stream = tokenize.generate_tokens(args.file.readline)
         errors = process(token_stream)
 
-    print(errors)
+    for error in errors:
+        print(f"{args.file.name}:{error.line}:{error.col}: {error.message}")
 
 
 def main(argv: List[str] = sys.argv[1:]) -> None:

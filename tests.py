@@ -165,6 +165,30 @@ class TestAST(unittest.TestCase):
             ''',
         )
 
+    def test_code_snippet(self) -> None:
+        self.assertAst(
+            '''
+            print("top")
+            def foo():
+                print("foo")
+            foo()
+            ''',
+            r'''
+            Node:
+            - <MultiTokenNode 'print'>
+            - <ParensGroupNode ( ... )>
+              - <MultiTokenNode '"top"'>
+            - <MultiTokenNode '\n def foo'>
+            - <ParensGroupNode ()>
+            - <MultiTokenNode ': \n      print'>
+            - <ParensGroupNode ( ... )>
+              - <MultiTokenNode '"foo"'>
+            - <MultiTokenNode '\n  foo'>
+            - <ParensGroupNode ()>
+            - <MultiTokenNode '\n '>
+            ''',
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -7,7 +7,7 @@ import enum
 import token
 import argparse
 import tokenize
-from typing import List, Iterable, Protocol
+from typing import List, Tuple, Iterable, Protocol
 from tokenize import TokenInfo
 
 WHITESPACE_TOKENS = (
@@ -64,6 +64,18 @@ class Node:
     def visit(self, visitor: Visitor) -> None:
         return visitor.visitNode(self)
 
+    @property
+    def start_pos(self) -> Tuple[int, int]:
+        return self.children[0].start_pos
+
+    @property
+    def start_line(self) -> int:
+        return self.start_pos[0]
+
+    @property
+    def end_line(self) -> int:
+        return self.children[-1].end_line
+
     def __repr__(self) -> str:
         return f"Node({self.children!r})"
 
@@ -79,6 +91,14 @@ class SingleTokenNode(Node):
     def visit(self, visitor: Visitor) -> None:
         return visitor.visitSingleTokenNode(self)
 
+    @property
+    def start_pos(self) -> Tuple[int, int]:
+        return self.token.start
+
+    @property
+    def end_line(self) -> int:
+        return self.token.end[0]
+
     def __repr__(self) -> str:
         return f"SingleTokenNode({self.token!r})"
 
@@ -93,6 +113,14 @@ class MultiTokenNode(Node):
 
     def visit(self, visitor: Visitor) -> None:
         return visitor.visitMultiTokenNode(self)
+
+    @property
+    def start_pos(self) -> Tuple[int, int]:
+        return self.tokens[0].start
+
+    @property
+    def end_line(self) -> int:
+        return self.tokens[-1].end[0]
 
     @property
     def visible_tokens(self) -> List[TokenInfo]:
@@ -133,6 +161,14 @@ class ParensGroupNode(Node):
 
     def visit(self, visitor: Visitor) -> None:
         return visitor.visitParensGroupNode(self)
+
+    @property
+    def start_pos(self) -> Tuple[int, int]:
+        return self.start.start_pos
+
+    @property
+    def end_line(self) -> int:
+        return self.end.end_line
 
     def __repr__(self) -> str:
         return f"ParensGroupNode({self.start!r}, {self.children!r}, {self.end!r})"
